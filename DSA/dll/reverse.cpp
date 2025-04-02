@@ -76,20 +76,46 @@ public:
             head = temporary->prev;
         }
     }
-
-    // Delete the first node
-    void deleteFirstNode() {
-        if (head == nullptr) return; // Nothing to delete
-
-        Node* temporary = head;
-        head = head->next; // Move head to the next node
-
-        if (head != nullptr) {
-            head->prev = nullptr; // Remove old head's reference
+    void deleteNode(int value) {
+        if (head == nullptr) return; // If the list is empty, do nothing
+        
+        // Check if the first node is the one to be deleted
+        if (head->data == value) {
+            Node* firstNode = head; // Store the current head as firstNode
+            head = head->next; // Move head to the next node
+    
+            // If the list is not empty after deleting the head, update the previous pointer of the new head to null
+            if (head != nullptr) {
+                head->prev = nullptr;
+            }
+            
+            delete firstNode; // Delete the old head (firstNode)
+            return;
         }
-
-        delete temporary; // Delete the old head
+    
+        Node* current = head; // Start from the head
+        Node* prev = nullptr; // Keep track of the previous node
+        
+        // Traverse the list to find the node to delete
+        while (current != nullptr && current->data != value) {
+            prev = current;
+            current = current->next;
+        }
+    
+        // If the value was not found, do nothing
+        if (current == nullptr) return;
+    
+        // Remove the node from the list
+        prev->next = current->next; // Connect previous node to the next node
+    
+        // If the node to be deleted is not the last node, update the previous pointer of the next node
+        if (current->next != nullptr) {
+            current->next->prev = prev;
+        }
+    
+        delete current; // Delete the node
     }
+    
 };
 
 int main() {
@@ -101,13 +127,20 @@ int main() {
     list.addNodeToEnd(30);
     list.addNodeToEnd(40);
 
+    cout << "list(forward): ";
     list.printData();  // Output: 20 <-> 10 <-> 30 <-> 40 <-> NULL
 
     list.reverseList(); // Reverse the list
+    cout << "list(backward): ";
     list.printData();  // Output: 40 <-> 30 <-> 10 <-> 20 <-> NULL
 
-    list.deleteFirstNode(); // Delete the first node (40)
-    list.printData();  // Output: 30 <-> 10 <-> 20 <-> NULL
+    cout << "Delete 10..." << endl;
+    list.deleteNode(10); // Delete  node (10)
+    list.printData();  // 40 <-> 30 <-> 20 <-> NULL
 
+    // reverse the list
+    list.reverseList(); //reverse the current list
+    cout << "list(forward): ";
+    list.printData(); // 20 <-> 30 <-> 40 <->  NULL
     return 0;
 }
