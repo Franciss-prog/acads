@@ -128,11 +128,11 @@ int main() {
     list.addNodeToEnd(40);
 
     cout << "list(forward): ";
-    list.printData();  // Output: 20 <-> 10 <-> 30 <-> 40 <-> NULL
+    list.printData();  // 20 <-> 10 <-> 30 <-> 40 <-> NULL
 
     list.reverseList(); // Reverse the list
     cout << "list(backward): ";
-    list.printData();  // Output: 40 <-> 30 <-> 10 <-> 20 <-> NULL
+    list.printData();  // 40 <-> 30 <-> 10 <-> 20 <-> NULL
 
     cout << "Delete 10..." << endl;
     list.deleteNode(10); // Delete  node (10)
