@@ -90,6 +90,7 @@ bool isValidTime(string timeOut) {
 }
 
 void listOfStudentAttendance() {
+    system("clear");
     cout << "\n--- List of Student Attendance ---\n";
     if (AttendanceList.empty()) {
         cout << "No records found.\n";
