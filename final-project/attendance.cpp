@@ -105,6 +105,7 @@ void listOfStudentAttendance() {
 }
 
 void addAttendance() {
+    system("clear");
     string name, srcode,  timeOut;
     string timeIn = getCurrentTimeInFormat();
     cin.ignore(); // Clear input buffer
@@ -130,8 +131,8 @@ void addAttendance() {
    
     AttendanceList.push_back({srcode, name, timeIn, timeOut});
     cout << "\n✅ Attendance Recorded!\n";
-    system("clear");
     listOfStudentAttendance();
+    system("clear");
 }
 void showMenu() {
     cout << "\n<--------------- Student Attendance Library System --------------->\n";
