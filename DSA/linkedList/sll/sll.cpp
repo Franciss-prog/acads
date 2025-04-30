@@ -4,18 +4,18 @@ using namespace std;
 
 
 struct Node{
-  int data;
   Node*next;
-
+  int data;
 
   Node(int value){
-    data = value;
     next = nullptr;
+    data = value;
   }
 };
 Node*head;
 
 void addNode(int value) {
+  // create a new Node based on Struct Node inserting the value of params
   Node*newNode = new Node(value);
 
   // check the first Node if the first Node have value
@@ -38,6 +38,7 @@ void addNode(int value) {
 
 void printNodes(){
 
+  // create a temporary node 
   Node *listOfNodes = head;
 
 while (listOfNodes != nullptr) {
@@ -47,8 +48,10 @@ while (listOfNodes != nullptr) {
 cout << "NULL\n";
 }
 int main(){
-  
-  addNode(10);  
+  int nodeInput;
+
+  cout << "Enter a number to add to Node: "; cin >> nodeInput;
+  addNode(nodeInput);
   printNodes();
 
 
