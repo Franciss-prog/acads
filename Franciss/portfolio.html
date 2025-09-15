@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Home</title>
+
+    <!-- icon in title -->
+    <link rel="icon" href="https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/d8c35aab-28fb-4b5f-af66-57c4dba5cd74/dc8tu3k-2e6e6f55-1e77-4ddd-b563-ea634ccf109d.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7InBhdGgiOiJcL2ZcL2Q4YzM1YWFiLTI4ZmItNGI1Zi1hZjY2LTU3YzRkYmE1Y2Q3NFwvZGM4dHUzay0yZTZlNmY1NS0xZTc3LTRkZGQtYjU2My1lYTYzNGNjZjEwOWQucG5nIn1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmZpbGUuZG93bmxvYWQiXX0.g9v_yAxK24UQpaj99xpUOwHEGdNWxZdBsBlX_UXiFOo" type="image/x-icon">
+    <!-- fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+    />
+    <!-- tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- import css -->
+    <link rel="stylesheet" href="global.css" />
+    <script src="tailwindConfig.js"></script>
+
+    <!-- swal2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  </head>
+
+  <body class="bg-dark text-light">
+    <main class="h-screen overflow-hidden relative max-md:px-10 max-lg:p-5 ">
+      <!-- navbar -->
+      <nav
+        class="flex items-center justify-between h-20 p-20 max-md:px-10 max-sm:px-5"
+      >
+        <!-- three dots -->
+        <section class="flex items-center gap-6 max-md:gap-4 max-sm:gap-3">
+          <img
+            class="h-[20px] max-md:h-[15px]"
+            src="https://upload.wikimedia.org/wikipedia/commons/0/0e/Basic_red_dot.png"
+            alt="redDot"
+          />
+          <img
+            class="h-[20px] max-md:h-[15px]"
+            src="https://upload.wikimedia.org/wikipedia/commons/7/7c/GAudit_YellowDot.png"
+            alt="yellowDot"
+          />
+          <img
+            class="h-[20px] max-md:h-[15px]"
+            src="https://upload.wikimedia.org/wikipedia/commons/2/2d/Basic_green_dot.png"
+            alt="green"
+          />
+        </section>
+        <ul class="flex flex-row gap-10 max-md:hidden">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="about.html">About</a></li>
+          <li><a href="portfolio.html">Portfolio</a></li>
+          <li><a href="contact.html">Contacts</a></li>
+        </ul>
+
+        <div class="flex-col gap-4 items-center hidden max-md:flex">
+          <!-- navbar for toggling -->
+          <button
+            class="hidden max-md:flex text-xl border p-2 rounded-lg max-md:text-md max-sm:text-sm"
+            id="toggleNavbar"
+          >
+            <i class="bi bi-list"></i>
+          </button>
+          <!-- toggle navbar content -->
+          <div class="hidden" id="toggleNavbarContent">
+            <span>hey bro</span>
+          </div>
+        </div>
+      </nav>
+      <!-- main content -->
+      <section
+        class="flex justify-start items-start h-[70%] px-20 max-md:px-0 flex-col"
+      >
+        <div class="font-bold text-4xl mb-20 max-md:text-2xl max-sm:text-lg">
+          <p class="text-yellow-600">[Franciss@root~]$ <span class="text-blue-400">ls Projects/</span></p>
+        </div>
+        <!-- portfolio container -->
+        <div
+          id="portfolio"
+          class="flex flex-row  text-6xl w-full max-md:justify-between h-screen max-md:flex-col max-md:pb-7 gap-64 max-md:gap-20 max-md:text-3xl"
+        ></div>
+      </section>
+     
+    </main>
+  </body>
+  <!-- script -->
+  <script src="script.js"></script>
+</html>

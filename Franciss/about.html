@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Home</title>
+
+    <!-- icon in title -->
+    <link rel="icon" href="https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/d8c35aab-28fb-4b5f-af66-57c4dba5cd74/dc8tu3k-2e6e6f55-1e77-4ddd-b563-ea634ccf109d.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7InBhdGgiOiJcL2ZcL2Q4YzM1YWFiLTI4ZmItNGI1Zi1hZjY2LTU3YzRkYmE1Y2Q3NFwvZGM4dHUzay0yZTZlNmY1NS0xZTc3LTRkZGQtYjU2My1lYTYzNGNjZjEwOWQucG5nIn1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmZpbGUuZG93bmxvYWQiXX0.g9v_yAxK24UQpaj99xpUOwHEGdNWxZdBsBlX_UXiFOo" type="image/x-icon">
+    <!-- fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+    />
+    <!-- tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- import css -->
+    <link rel="stylesheet" href="global.css" />
+    <script src="tailwindConfig.js"></script>
+
+    <!-- swal2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  </head>
+
+  <body class="bg-dark text-light">
+    <main class="h-screen overflow-hidden relative max-md:px-10 max-lg:p-5">
+      <!-- navbar -->
+      <nav
+        class="flex items-center justify-between h-20 p-20 max-md:px-10 max-sm:px-5"
+      >
+        <!-- three dots -->
+        <section class="flex items-center gap-6 max-md:gap-4 max-sm:gap-3">
+          <img
+            class="h-[20px] max-md:h-[15px]"
+            src="https://upload.wikimedia.org/wikipedia/commons/0/0e/Basic_red_dot.png"
+            alt="redDot"
+          />
+          <img
+            class="h-[20px] max-md:h-[15px]"
+            src="https://upload.wikimedia.org/wikipedia/commons/7/7c/GAudit_YellowDot.png"
+            alt="yellowDot"
+          />
+          <img
+            class="h-[20px] max-md:h-[15px]"
+            src="https://upload.wikimedia.org/wikipedia/commons/2/2d/Basic_green_dot.png"
+            alt="green"
+          />
+        </section>
+        <ul class="flex flex-row gap-10 max-md:hidden">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="about.html">About</a></li>
+          <li><a href="portfolio.html">Portfolio</a></li>
+          <li><a href="contact.html">Contacts</a></li>
+        </ul>
+
+        <div class="flex-col gap-4 items-center hidden max-md:flex">
+          <!-- navbar for toggling -->
+          <button
+            class="hidden max-md:flex text-xl border p-2 rounded-lg max-md:text-md max-sm:text-sm"
+            id="toggleNavbar"
+          >
+            <i class="bi bi-list"></i>
+          </button>
+        </div>
+      </nav>
+      <!-- main content -->
+      <section
+        class="flex justify-center items-start h-[60%] gap-10 flex-col px-20 text-5xl max-md:text-3xl max-sm:text-xl max-md:px-10 max-sm:px-6 max-md:h-[80%]"
+      >
+        <span class="text-comment">// About Me</span>
+        <div
+          class="flex flex-col text-3xl max-md:text-xl max-sm:text-lg gap-10"
+        >
+          <div class="flex gap-4 items-start max-sm:text-sm">
+            <p class="text-red-600 max-md:hidden">
+              about<span class="text-light">:</span>
+            </p>
+            <p class="text-wrap max-sm:text-sm max-lg:text-xl">
+              I'm Franciss, a tech enthusiast who loves making websites and
+              exploring programming languages like Go and C to see what fits me
+              best. When I’m not coding, I enjoy cycling and playing Minecraft,
+              balancing my time between creativity, exploration, and fun.
+            </p>
+          </div>
+
+          <!-- techstack -->
+          <div class="flex gap-4 items-start max-md:flex-col max-sm:text-sm" id="techstack">
+            <p class="text-red-600">
+              techstack<span class="text-light">:</span>
+            </p>
+            <span class="text-violet-600">[</span>
+            <div class="max-md:pl-5 flex gap-3 max-md:flex-col" id="techstack">
+              <a href="https://jsdoc.app/" target="_blank">"JavaScript",</a>
+              <a href="https://www.typescriptlang.org/docs/" target="_blank"
+                >"TypeScript",</a
+              >
+              <a href="https://go.dev/doc/" target="_blank">"Go",</a>
+              <a href="https://docs.python.org/3/" target="_blank">"Python",</a>
+              <a
+                href="https://vardhaman.org/wp-content/uploads/2021/03/CP.pdf"
+                target="_blank"
+                >"C",</a
+              >
+            </div>
+            <span class="text-violet-600">]</span>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+  <!-- script -->
+  <script src="script.js"></script>
+</html>

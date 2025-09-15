@@ -1,0 +1,18 @@
+/* bootstrap */
+/* Jetbrains Mono Fonts */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+* {
+  font-family: "JetBrains Mono", monospace;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+::-webkit-scrollbar {
+  @apply hidden;
+}
+
+
+
+
