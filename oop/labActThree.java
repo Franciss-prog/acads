@@ -5,10 +5,13 @@ public class labActThree {
     String name;
     int age;
 
-    // create a constructor for
-    public Student(String name, int age) {
-      this.name = name;
-      this.age = age;
+    // getter
+    public String getName() {
+      return name;
+    }
+
+    public int getAge() {
+      return age;
     }
   }
 
@@ -16,7 +19,7 @@ public class labActThree {
     // access outer
     labActThree labActThree = new labActThree();
     // access inner
-    Student student = labActThree.new Student("Franciss", 19);
+    Student student = labActThree.new Student();
     System.out.println("Name: " + student.name);
     System.out.println("Age: " + student.age);
   }

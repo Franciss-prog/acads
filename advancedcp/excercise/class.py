@@ -1,23 +1,23 @@
-class Person:
-    # setter
-    def __init__(self, name, age):
-        self.name = name
-        self.age = age
+class BankAccount:
+    def __init__(self, owner, balance=0):
+        self.owner = owner
+        self.balance = balance
 
-    # getter
-    def get_name(self):
-        return self.name
+    def deposit(self, amount):
+        self.balance += amount
+        print(f"{self.owner} deposed PHP{amount}. New balance: PHP{self.balance}")
 
-    def get_age(self):
-        return self.age
+    def withdraw(self, amount):
+        if amount <= self.balance:
+            self.balance -= amount
+            print(
+                f"{self.owner} withdrew PHP{amount}. Reamaining balance: PHP{self.balance}"
+            )
+        else:
+            print("Insufficient funds")
 
 
-# GET THE inout from the user and acccess it by getter functions
-name = input("Enter your name: ")
-age = int(input("Enter your age: "))
-
-
-newPerson = Person(name, age)
-
-print(newPerson.get_name())
-print(newPerson.get_age())
+account1 = BankAccount("Jasmin", 5000)
+account1.deposit(1500)
+account1.withdraw(2000)
+account1.withdraw(6000)
