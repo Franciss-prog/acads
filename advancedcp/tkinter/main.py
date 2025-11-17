@@ -23,16 +23,18 @@ def login_page():
     login_window = tk.Tk()
     login_window.title("Login Form")
     login_window.geometry("350x250")
-    login_window.config(bg="lightblue")
+    login_window.config(bg="gray")
 
     tk.Label(
-        login_window, text="User Login", font=("Arial", 18, "bold"), bg="lightblue"
+        login_window,
+        text="User Login",
+        font=("Arial", 18, "bold"),
     ).pack(pady=10)
-    tk.Label(login_window, text="Username:", bg="lightblue", font=("Arial", 12)).pack()
+    tk.Label(login_window, text="Username:", font=("Arial", 12)).pack()
     username_entry = tk.Entry(login_window, width=30)
     username_entry.pack(pady=5)
 
-    tk.Label(login_window, text="Password:", bg="lightblue", font=("Arial", 12)).pack()
+    tk.Label(login_window, text="Password:", font=("Arial", 12)).pack()
     password_entry = tk.Entry(login_window, show="*", width=30)
     password_entry.pack(pady=5)
 
@@ -48,13 +50,13 @@ def login_page():
             messagebox.showerror("Login Failed", "Invalid username or password.")
 
     tk.Button(
-        login_window, text="Login", command=login, bg="green", fg="white", width=10
+        login_window, text="Login", command=login, bg="black", fg="white", width=10
     ).pack(pady=10)
     tk.Button(
         login_window,
         text="Register",
         command=open_register,
-        bg="blue",
+        bg="black",
         fg="white",
         width=10,
     ).pack()
@@ -76,13 +78,12 @@ def register_window():
     reg_window = tk.Tk()
     reg_window.title("Register Account")
     reg_window.geometry("350x250")
-    reg_window.config(bg="lightyellow")
+    reg_window.config(bg="gray")
 
     tk.Label(
         reg_window,
         text="Register New User",
         font=("Arial", 18, "bold"),
-        bg="lightyellow",
     ).pack(pady=10)
     tk.Label(
         reg_window, text="New Username:", bg="lightyellow", font=("Arial", 12)
