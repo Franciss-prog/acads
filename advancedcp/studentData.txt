@@ -1,1 +1,0 @@
-{1: {'name': 'John', 'age': 19, 'srCode': '24-43298'}, 2: {'name': 'Jane', 'age': 20, 'srCode': '24-43299'}, 3: {'name': 'Jack', 'age': 21, 'srCode': '24-43331'}, 4: {'name': 'Jack', 'age': 21, 'srCode': '24-43332'}, 5: {'name': 'Jack', 'age': 21, 'srCode': '24-43324'}, 6: {'name': 'dfasf', 'age': '423', 'srCode': '24-423'}}
