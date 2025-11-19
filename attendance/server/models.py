@@ -18,3 +18,7 @@ class BorrowBookPayload(BaseModel):
 class ReturnBookPayload(BaseModel):
     token: str
     isbn: str
+
+
+class RenderBorrowedBook(BaseModel):
+    token: str

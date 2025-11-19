@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, date
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from models import Attendance, BorrowBookPayload
+from models import Attendance, BorrowBookPayload, RenderBorrowedBook, ReturnBookPayload
 from database import get_db_connection
 from utils import calculate_return_date, clean_isbn
 
@@ -140,8 +140,8 @@ async def post_borrow(data: BorrowBookPayload):
         # if the student doesn't exist, create a new one
         if not student:
             cursor.execute(
-                "INSERT INTO student (srcode, fullname, type, attendance_count) VALUES (%s, %s, %s, %s)",
-                (srcode, fullname, type_, 0),
+                "INSERT INTO student (srcode, fullname, type, attendance_count, book_count) VALUES (%s, %s, %s, %s,%s)",
+                (srcode, fullname, type_, 0, 0),
             )
 
         # check if book exists
@@ -154,6 +154,11 @@ async def post_borrow(data: BorrowBookPayload):
                 "INSERT INTO books (isbn, bookname, bookauthor) VALUES (%s, %s, %s)",
                 (isbn, data.bookname, data.bookauthor),
             )
+        # then update the book_count to student table
+        cursor.execute(
+            "UPDATE student SET book_count = book_count + 1 WHERE srcode = %s",
+            (srcode,),
+        )
 
         # prevent duplicate borrow (student already borrowed this book and not yet returned)
         cursor.execute(
@@ -193,7 +198,9 @@ async def post_borrow(data: BorrowBookPayload):
 
 # render for borrowed books
 @app.post("/borrowed")
-async def get_borrowed_books(token: str):
+async def get_borrowed_books(data: RenderBorrowedBook):
+    # GET THE data
+    token = data.token
     if not token:
         raise HTTPException(status_code=400, detail="Missing token.")
 
@@ -220,7 +227,7 @@ async def get_borrowed_books(token: str):
         borrowed_book = cursor.fetchone()
 
         if not borrowed_book:
-            return {"borrowed": False, "message": "No borrowed book found."}
+            return {"borrowed": False}
 
         return {
             "borrowed": True,
@@ -237,14 +244,11 @@ async def get_borrowed_books(token: str):
             db.close()
 
 
-from fastapi import Request
-
-
-@app.delete("/borrow")
-async def delete_borrow_book(request: Request):
-    data = await request.json()
-    token = data.get("token")
-    isbn = data.get("isbn")
+# return book
+@app.post("/returnbook")
+async def delete_borrow_book(data: ReturnBookPayload):
+    token = data.token
+    isbn = clean_isbn(data.isbn)
 
     if not token or not isbn:
         raise HTTPException(status_code=400, detail="Missing token or ISBN.")
