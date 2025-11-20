@@ -120,6 +120,27 @@ class BackendClient:
             requests.post(f"{self.base_url}/attendance", json=payload, timeout=10)
         )
 
+    def admin_login(self, username: str, password: str) -> Dict[str, Any]:
+        payload = {"username": username, "password": password}
+        return self._handle_response(
+            requests.post(f"{self.base_url}/admin/login", json=payload, timeout=10)
+        )
+
+    def get_top_attendance(self) -> Dict[str, Any]:
+        return self._handle_response(
+            requests.get(f"{self.base_url}/admin/top-attendance", timeout=10)
+        )
+
+    def get_most_borrowed_books(self) -> Dict[str, Any]:
+        return self._handle_response(
+            requests.get(f"{self.base_url}/admin/most-borrowed-books", timeout=10)
+        )
+
+    def get_today_attendance(self) -> Dict[str, Any]:
+        return self._handle_response(
+            requests.get(f"{self.base_url}/admin/today-attendance", timeout=10)
+        )
+
 
 class BookService:
     @staticmethod
@@ -168,14 +189,14 @@ class LandingFrame(AppFrame):
     def __init__(self, master: "LibraryApp"):
         super().__init__(master)
         self.configure(bg="#111")
+
         tk.Label(
             self,
-            text="Library Attendance System",
+            text="Library Attendance System\n  Batangas State University Mabini Campus",
             font=("Helvetica", 28, "bold"),
             fg="#f8f8f8",
             bg="#111",
         ).pack(pady=(120, 12))
-
         tk.Label(
             self,
             text="Scan your student QR code to record attendance,\nborrow, or return books.",
@@ -187,6 +208,8 @@ class LandingFrame(AppFrame):
 
         ttk.Button(self, text="Scan QR Code", command=self.goto_scanner).pack(pady=40)
 
+        ttk.Button(self, text="Admin Login", command=self.open_admin_login).pack(pady=10)
+
         tk.Label(
             self,
             text="© 2025 Library Attendance System",
@@ -197,6 +220,9 @@ class LandingFrame(AppFrame):
 
     def goto_scanner(self):
         self.app.show_frame("scanner")
+
+    def open_admin_login(self):
+        AdminLoginDialog(self.app)
 
 
 class QRScannerFrame(AppFrame):
@@ -584,17 +610,16 @@ class ChoiceDialog(tk.Toplevel):
             bg="#111",
             font=("Helvetica", 14, "bold"),
         ).pack(padx=30, pady=(20, 10))
-
+        ttk.Button(
+            self, text="Record Attendance", command=lambda: self._choose("attendance")
+        ).pack(fill=tk.X, padx=30, pady=5)
         ttk.Button(self, text="Borrow Book", command=lambda: self._choose("borrow")).pack(
             fill=tk.X, padx=30, pady=5
         )
         ttk.Button(self, text="Return Book", command=lambda: self._choose("return")).pack(
             fill=tk.X, padx=30, pady=5
         )
-        ttk.Button(
-            self, text="Record Attendance", command=lambda: self._choose("attendance")
-        ).pack(fill=tk.X, padx=30, pady=5)
-
+        
         ttk.Button(self, text="Cancel", command=self.destroy).pack(
             fill=tk.X, padx=30, pady=(15, 20)
         )
@@ -606,10 +631,277 @@ class ChoiceDialog(tk.Toplevel):
         self.on_choice(action)
 
 
+class AdminLoginDialog(tk.Toplevel):
+    def __init__(self, parent: "LibraryApp"):
+        super().__init__(parent)
+        self.title("Admin Login")
+        self.resizable(False, False)
+        self.configure(bg="#111")
+        self.transient(parent)
+        self.grab_set()
+        self.parent = parent
+        self.backend = BackendClient()
+
+        tk.Label(
+            self,
+            text="Admin Login",
+            fg="#fafafa",
+            bg="#111",
+            font=("Helvetica", 18, "bold"),
+        ).pack(padx=40, pady=(30, 20))
+
+        form_frame = tk.Frame(self, bg="#111")
+        form_frame.pack(padx=40, pady=10)
+
+        tk.Label(form_frame, text="Username:", fg="#ddd", bg="#111").grid(
+            row=0, column=0, sticky="w", pady=5
+        )
+        self.username_entry = ttk.Entry(form_frame, width=25)
+        self.username_entry.grid(row=0, column=1, pady=5, padx=10)
+
+        tk.Label(form_frame, text="Password:", fg="#ddd", bg="#111").grid(
+            row=1, column=0, sticky="w", pady=5
+        )
+        self.password_entry = ttk.Entry(form_frame, width=25, show="*")
+        self.password_entry.grid(row=1, column=1, pady=5, padx=10)
+
+        self.status_var = tk.StringVar(value="")
+        tk.Label(
+            form_frame, textvariable=self.status_var, fg="#ff6b6b", bg="#111", font=("Helvetica", 10)
+        ).grid(row=2, column=0, columnspan=2, pady=5)
+
+        button_frame = tk.Frame(self, bg="#111")
+        button_frame.pack(padx=40, pady=(10, 30))
+
+        ttk.Button(button_frame, text="Login", command=self.handle_login).pack(
+            side=tk.LEFT, padx=5
+        )
+        ttk.Button(button_frame, text="Cancel", command=self.destroy).pack(side=tk.LEFT, padx=5)
+
+        self.username_entry.focus()
+        self.bind("<Return>", lambda e: self.handle_login())
+
+    def handle_login(self):
+        username = self.username_entry.get().strip()
+        password = self.password_entry.get().strip()
+
+        if not username or not password:
+            self.status_var.set("Please enter both username and password.")
+            return
+
+        self.status_var.set("Logging in...")
+        threading.Thread(target=self._login, args=(username, password), daemon=True).start()
+
+    def _login(self, username: str, password: str):
+        try:
+            result = self.backend.admin_login(username, password)
+            self.after(0, lambda: self._on_login_success(result))
+        except requests.HTTPError as exc:
+            detail = exc.response.json().get("detail") if exc.response is not None else "Login failed."
+            self.after(0, lambda: self.status_var.set(detail))
+        except requests.RequestException as exc:
+            self.after(0, lambda: self.status_var.set(f"Connection error: {exc}"))
+
+    def _on_login_success(self, result: Dict[str, Any]):
+        self.destroy()
+        AdminDashboardWindow(self.parent)
+
+
+class AdminDashboardWindow(tk.Toplevel):
+    def __init__(self, parent: "LibraryApp"):
+        super().__init__(parent)
+        self.title("Admin Dashboard - Library Attendance System")
+        self.geometry("1200x800")
+        self.configure(bg="#111")
+        self.backend = BackendClient()
+
+        tk.Label(
+            self,
+            text="Admin Dashboard",
+            fg="#fafafa",
+            bg="#111",
+            font=("Helvetica", 24, "bold"),
+        ).pack(pady=20)
+
+        notebook = ttk.Notebook(self)
+        notebook.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
+
+        top_attendance_frame = tk.Frame(notebook, bg="#111")
+        notebook.add(top_attendance_frame, text="Top Attendance")
+
+        most_borrowed_frame = tk.Frame(notebook, bg="#111")
+        notebook.add(most_borrowed_frame, text="Most Borrowed Books")
+
+        today_attendance_frame = tk.Frame(notebook, bg="#111")
+        notebook.add(today_attendance_frame, text="Today's Attendance")
+
+        self._setup_top_attendance(top_attendance_frame)
+        self._setup_most_borrowed(most_borrowed_frame)
+        self._setup_today_attendance(today_attendance_frame)
+
+        button_frame = tk.Frame(self, bg="#111")
+        button_frame.pack(pady=10)
+        ttk.Button(button_frame, text="Refresh All", command=self.refresh_all).pack(side=tk.LEFT, padx=5)
+        ttk.Button(button_frame, text="Close", command=self.destroy).pack(side=tk.LEFT, padx=5)
+
+        self.refresh_all()
+
+    def _setup_top_attendance(self, parent: tk.Frame):
+        label = tk.Label(
+            parent,
+            text="Ranked list of students with highest attendance",
+            fg="#ddd",
+            bg="#111",
+            font=("Helvetica", 12),
+        )
+        label.pack(pady=10)
+
+        tree_frame = tk.Frame(parent, bg="#111")
+        tree_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
+
+        scrollbar = ttk.Scrollbar(tree_frame)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.top_attendance_tree = ttk.Treeview(
+            tree_frame,
+            columns=("Rank", "Student", "Total Hours"),
+            show="headings",
+            yscrollcommand=scrollbar.set,
+        )
+        self.top_attendance_tree.heading("Rank", text="Rank")
+        self.top_attendance_tree.heading("Student", text="Student Name")
+        self.top_attendance_tree.heading("Total Hours", text="Total Hours")
+        self.top_attendance_tree.column("Rank", width=80, anchor="center")
+        self.top_attendance_tree.column("Student", width=300, anchor="w")
+        self.top_attendance_tree.column("Total Hours", width=150, anchor="center")
+        self.top_attendance_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.config(command=self.top_attendance_tree.yview)
+
+    def _setup_most_borrowed(self, parent: tk.Frame):
+        label = tk.Label(
+            parent,
+            text="Students who borrowed the most books",
+            fg="#ddd",
+            bg="#111",
+            font=("Helvetica", 12),
+        )
+        label.pack(pady=10)
+
+        tree_frame = tk.Frame(parent, bg="#111")
+        tree_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
+
+        scrollbar = ttk.Scrollbar(tree_frame)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.most_borrowed_tree = ttk.Treeview(
+            tree_frame,
+            columns=("Rank", "Student", "Books Borrowed"),
+            show="headings",
+            yscrollcommand=scrollbar.set,
+        )
+        self.most_borrowed_tree.heading("Rank", text="Rank")
+        self.most_borrowed_tree.heading("Student", text="Student Name")
+        self.most_borrowed_tree.heading("Books Borrowed", text="Books Borrowed")
+        self.most_borrowed_tree.column("Rank", width=80, anchor="center")
+        self.most_borrowed_tree.column("Student", width=300, anchor="w")
+        self.most_borrowed_tree.column("Books Borrowed", width=150, anchor="center")
+        self.most_borrowed_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.config(command=self.most_borrowed_tree.yview)
+
+    def _setup_today_attendance(self, parent: tk.Frame):
+        label = tk.Label(
+            parent,
+            text="Students who scanned attendance today",
+            fg="#ddd",
+            bg="#111",
+            font=("Helvetica", 12),
+        )
+        label.pack(pady=10)
+
+        tree_frame = tk.Frame(parent, bg="#111")
+        tree_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
+
+        scrollbar = ttk.Scrollbar(tree_frame)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.today_attendance_tree = ttk.Treeview(
+            tree_frame,
+            columns=("Student", "Hours", "Time"),
+            show="headings",
+            yscrollcommand=scrollbar.set,
+        )
+        self.today_attendance_tree.heading("Student", text="Student Name")
+        self.today_attendance_tree.heading("Hours", text="Hours Attended")
+        self.today_attendance_tree.heading("Time", text="Time")
+        self.today_attendance_tree.column("Student", width=300, anchor="w")
+        self.today_attendance_tree.column("Hours", width=150, anchor="center")
+        self.today_attendance_tree.column("Time", width=200, anchor="center")
+        self.today_attendance_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.config(command=self.today_attendance_tree.yview)
+
+    def refresh_all(self):
+        threading.Thread(target=self._refresh_top_attendance, daemon=True).start()
+        threading.Thread(target=self._refresh_most_borrowed, daemon=True).start()
+        threading.Thread(target=self._refresh_today_attendance, daemon=True).start()
+
+    def _refresh_top_attendance(self):
+        try:
+            data = self.backend.get_top_attendance()
+            students = data.get("students", [])
+            self.after(0, lambda: self._populate_top_attendance(students))
+        except requests.RequestException as exc:
+            self.after(0, lambda: messagebox.showerror("Error", f"Failed to fetch top attendance:\n{exc}"))
+
+    def _populate_top_attendance(self, students: list):
+        for item in self.top_attendance_tree.get_children():
+            self.top_attendance_tree.delete(item)
+
+        for idx, student in enumerate(students, 1):
+            name = student.get("name", "Unknown")
+            hours = student.get("total_hours", 0)
+            self.top_attendance_tree.insert("", tk.END, values=(idx, name, hours))
+
+    def _refresh_most_borrowed(self):
+        try:
+            data = self.backend.get_most_borrowed_books()
+            students = data.get("students", [])
+            self.after(0, lambda: self._populate_most_borrowed(students))
+        except requests.RequestException as exc:
+            self.after(0, lambda: messagebox.showerror("Error", f"Failed to fetch most borrowed books:\n{exc}"))
+
+    def _populate_most_borrowed(self, students: list):
+        for item in self.most_borrowed_tree.get_children():
+            self.most_borrowed_tree.delete(item)
+
+        for idx, student in enumerate(students, 1):
+            name = student.get("name", "Unknown")
+            count = student.get("books_borrowed", 0)
+            self.most_borrowed_tree.insert("", tk.END, values=(idx, name, count))
+
+    def _refresh_today_attendance(self):
+        try:
+            data = self.backend.get_today_attendance()
+            records = data.get("attendance", [])
+            self.after(0, lambda: self._populate_today_attendance(records))
+        except requests.RequestException as exc:
+            self.after(0, lambda: messagebox.showerror("Error", f"Failed to fetch today's attendance:\n{exc}"))
+
+    def _populate_today_attendance(self, records: list):
+        for item in self.today_attendance_tree.get_children():
+            self.today_attendance_tree.delete(item)
+
+        for record in records:
+            name = record.get("name", "Unknown")
+            hours = record.get("hours", 0)
+            time = record.get("time", "N/A")
+            self.today_attendance_tree.insert("", tk.END, values=(name, hours, time))
+
+
 class LibraryApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Library Attendance System")
+
         self.geometry("900x700")
         self.configure(bg="#111")
         self.resizable(False, False)
@@ -621,9 +913,9 @@ class LibraryApp(tk.Tk):
 
         self.frames["landing"] = LandingFrame(self)
         self.frames["scanner"] = QRScannerFrame(self)
+        self.frames["attendance"] = AttendanceFrame(self)
         self.frames["borrow"] = BorrowFrame(self)
         self.frames["return"] = ReturnFrame(self)
-        self.frames["attendance"] = AttendanceFrame(self)
 
         for frame in self.frames.values():
             frame.place(relwidth=1, relheight=1)

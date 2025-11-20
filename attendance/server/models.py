@@ -22,3 +22,8 @@ class ReturnBookPayload(BaseModel):
 
 class RenderBorrowedBook(BaseModel):
     token: str
+
+
+class AdminLoginPayload(BaseModel):
+    username: str
+    password: str
