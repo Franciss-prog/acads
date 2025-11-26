@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from io import BytesIO
 from typing import Any, Dict, Optional
 
+import time
+
 try:
     import cv2  # type: ignore[import]
 except ImportError as exc:  # pragma: no cover
@@ -23,6 +25,16 @@ import requests
 import tkinter as tk
 from PIL import Image, ImageTk
 from tkinter import messagebox, ttk
+
+try:
+    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg  # type: ignore[import]
+    from matplotlib.figure import Figure  # type: ignore[import]
+
+    MATPLOTLIB_AVAILABLE = True
+except ImportError:
+    FigureCanvasTkAgg = None  # type: ignore[assignment]
+    Figure = None  # type: ignore[assignment]
+    MATPLOTLIB_AVAILABLE = False
 
 GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes"
 BACKEND_BASE_URL = "http://localhost:8000"
@@ -714,6 +726,7 @@ class AdminDashboardWindow(tk.Toplevel):
         self.geometry("1200x800")
         self.configure(bg="#111")
         self.backend = BackendClient()
+        self._chart_refs = []
 
         tk.Label(
             self,
@@ -757,7 +770,10 @@ class AdminDashboardWindow(tk.Toplevel):
         label.pack(pady=10)
 
         tree_frame = tk.Frame(parent, bg="#111")
-        tree_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
+        tree_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=20, pady=10)
+        chart_frame = tk.Frame(parent, bg="#111", width=300)
+        chart_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(0, 20), pady=10)
+        self.top_chart_frame = chart_frame
 
         scrollbar = ttk.Scrollbar(tree_frame)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
@@ -788,7 +804,10 @@ class AdminDashboardWindow(tk.Toplevel):
         label.pack(pady=10)
 
         tree_frame = tk.Frame(parent, bg="#111")
-        tree_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
+        tree_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=20, pady=10)
+        chart_frame = tk.Frame(parent, bg="#111", width=300)
+        chart_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(0, 20), pady=10)
+        self.most_borrowed_chart_frame = chart_frame
 
         scrollbar = ttk.Scrollbar(tree_frame)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
@@ -819,7 +838,10 @@ class AdminDashboardWindow(tk.Toplevel):
         label.pack(pady=10)
 
         tree_frame = tk.Frame(parent, bg="#111")
-        tree_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
+        tree_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=20, pady=10)
+        chart_frame = tk.Frame(parent, bg="#111", width=300)
+        chart_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(0, 20), pady=10)
+        self.today_chart_frame = chart_frame
 
         scrollbar = ttk.Scrollbar(tree_frame)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
@@ -844,6 +866,54 @@ class AdminDashboardWindow(tk.Toplevel):
         threading.Thread(target=self._refresh_most_borrowed, daemon=True).start()
         threading.Thread(target=self._refresh_today_attendance, daemon=True).start()
 
+    def _render_bar_chart(
+        self,
+        frame: tk.Frame,
+        labels: list[str],
+        values: list[float],
+        title: str,
+        color: str = "#4CAF50",
+    ):
+        for widget in frame.winfo_children():
+            widget.destroy()
+        if not labels:
+            tk.Label(
+                frame,
+                text="No data to visualize yet.",
+                fg="#888",
+                bg="#111",
+                font=("Helvetica", 12),
+            ).pack(expand=True)
+            return
+        if not MATPLOTLIB_AVAILABLE:
+            tk.Label(
+                frame,
+                text="Install matplotlib to view charts.",
+                fg="#fbc02d",
+                bg="#111",
+                font=("Helvetica", 12, "bold"),
+                justify="center",
+                wraplength=240,
+            ).pack(expand=True, padx=20)
+            return
+
+        fig = Figure(figsize=(4.2, 3.2), dpi=100)
+        ax = fig.add_subplot(111)
+        ax.barh(labels, values, color=color)
+        ax.set_title(title, color="#fafafa", fontsize=12, pad=14)
+        ax.set_facecolor("#111")
+        fig.patch.set_facecolor("#111")
+        ax.tick_params(colors="#ddd")
+        for spine in ax.spines.values():
+            spine.set_color("#555")
+        fig.tight_layout()
+
+        canvas = FigureCanvasTkAgg(fig, master=frame)
+        canvas.draw()
+        widget = canvas.get_tk_widget()
+        widget.pack(fill=tk.BOTH, expand=True)
+        self._chart_refs.append(canvas)
+
     def _refresh_top_attendance(self):
         try:
             data = self.backend.get_top_attendance()
@@ -856,10 +926,22 @@ class AdminDashboardWindow(tk.Toplevel):
         for item in self.top_attendance_tree.get_children():
             self.top_attendance_tree.delete(item)
 
+        labels = []
+        values = []
         for idx, student in enumerate(students, 1):
             name = student.get("name", "Unknown")
             hours = student.get("total_hours", 0)
             self.top_attendance_tree.insert("", tk.END, values=(idx, name, hours))
+            labels.append(name)
+            values.append(hours)
+
+        self._render_bar_chart(
+            self.top_chart_frame,
+            labels,
+            values,
+            "Total Attendance Hours",
+            color="#ff9800",
+        )
 
     def _refresh_most_borrowed(self):
         try:
@@ -873,10 +955,22 @@ class AdminDashboardWindow(tk.Toplevel):
         for item in self.most_borrowed_tree.get_children():
             self.most_borrowed_tree.delete(item)
 
+        labels = []
+        values = []
         for idx, student in enumerate(students, 1):
             name = student.get("name", "Unknown")
             count = student.get("books_borrowed", 0)
             self.most_borrowed_tree.insert("", tk.END, values=(idx, name, count))
+            labels.append(name)
+            values.append(count)
+
+        self._render_bar_chart(
+            self.most_borrowed_chart_frame,
+            labels,
+            values,
+            "Books Borrowed",
+            color="#4caf50",
+        )
 
     def _refresh_today_attendance(self):
         try:
@@ -890,11 +984,23 @@ class AdminDashboardWindow(tk.Toplevel):
         for item in self.today_attendance_tree.get_children():
             self.today_attendance_tree.delete(item)
 
+        labels = []
+        values = []
         for record in records:
             name = record.get("name", "Unknown")
             hours = record.get("hours", 0)
             time = record.get("time", "N/A")
             self.today_attendance_tree.insert("", tk.END, values=(name, hours, time))
+            labels.append(f"{name} ({time})")
+            values.append(hours)
+
+        self._render_bar_chart(
+            self.today_chart_frame,
+            labels,
+            values,
+            "Today's Logged Hours",
+            color="#2196f3",
+        )
 
 
 class LibraryApp(tk.Tk):

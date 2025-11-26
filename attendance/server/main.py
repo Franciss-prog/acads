@@ -1,7 +1,16 @@
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, date
 from fastapi import FastAPI, HTTPException, Query, Request
+from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi.middleware.cors import CORSMiddleware
-from models import Attendance, BorrowBookPayload, RenderBorrowedBook, ReturnBookPayload, AdminLoginPayload
+from models import (
+    Attendance,
+    BorrowBookPayload,
+    RenderBorrowedBook,
+    ReturnBookPayload,
+    AdminLoginPayload,
+)
+from notif import send_mail
 from database import get_db_connection
 from utils import calculate_return_date, clean_isbn
 
@@ -11,9 +20,162 @@ import pymysql
 import hashlib
 import secrets
 
-app = FastAPI()
 
-# === CORS configuration ===
+# Define lifespan context manager
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Start the scheduler
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(
+        check_and_notify_overdue_books,
+        'interval',
+        minutes=1,  # For testing
+        timezone='Asia/Manila',
+    )
+    scheduler.start()
+
+    yield  # Application runs here
+
+    # Shutdown: Stop the scheduler
+    scheduler.shutdown()
+
+
+app = FastAPI(lifespan=lifespan)
+
+scheduler = BackgroundScheduler()
+
+
+def check_and_notify_overdue_books():
+    """Check for books due tomorrow or overdue and send notifications"""
+    print("=" * 60)
+    print("🔍 RUNNING NOTIFICATION CHECK...")
+    print(f"Current time: {datetime.now(ZoneInfo('Asia/Manila'))}")
+    print("=" * 60)
+
+    db = None
+    cursor = None
+    try:
+        db = get_db_connection()
+        cursor = db.cursor(pymysql.cursors.DictCursor)
+
+        # Get books that are due tomorrow (reminder)
+        tomorrow = date.today() + timedelta(days=1)
+        print(f"📅 Checking for books due on: {tomorrow}")
+
+        cursor.execute(
+            """
+            SELECT b.*, s.fullname, s.email 
+            FROM borrow b
+            JOIN student s ON b.srcode = s.srcode
+            WHERE b.return_date = %s
+            """,
+            (tomorrow,),
+        )
+        books_due_tomorrow = cursor.fetchall()
+        print(f"📚 Found {len(books_due_tomorrow)} books due tomorrow")
+
+        if books_due_tomorrow:
+            print("Books due tomorrow:")
+            for book in books_due_tomorrow:
+                print(
+                    f"  - {book['bookname']} for {book['fullname']} ({book['email']})"
+                )
+
+        # Get overdue books (1 day past return date)
+        yesterday = date.today() - timedelta(days=1)
+        print(f"📅 Checking for books overdue since: {yesterday}")
+
+        cursor.execute(
+            """
+            SELECT b.*, s.fullname, s.email 
+            FROM borrow b
+            JOIN student s ON b.srcode = s.srcode
+            WHERE b.return_date = %s
+            """,
+            (yesterday,),
+        )
+        overdue_books = cursor.fetchall()
+        print(f"⚠️  Found {len(overdue_books)} overdue books")
+
+        if overdue_books:
+            print("Overdue books:")
+            for book in overdue_books:
+                print(
+                    f"  - {book['bookname']} for {book['fullname']} ({book['email']})"
+                )
+
+        # Send reminder emails for books due tomorrow
+        for book in books_due_tomorrow:
+            print(f"📧 Sending 'due tomorrow' email to: {book['email']}")
+            try:
+                send_mail(
+                    target=book['email'],
+                    subject="📚 Book Due Tomorrow - Reminder",
+                    body=f"""Hi {book['fullname']},
+
+This is a friendly reminder that your borrowed book is due tomorrow.
+
+Book Details:
+- Title: {book['bookname']}
+- Author: {book['bookauthor']}
+- Due Date: {book['return_date']}
+
+Please return the book on time to avoid any penalties.
+
+Thank you,
+Batangas State University Mabini Campus Library
+""",
+                )
+                print(f"✅ Email sent successfully to {book['email']}")
+            except Exception as e:
+                print(f"❌ Failed to send email to {book['email']}: {e}")
+
+        # Send overdue notifications
+        for book in overdue_books:
+            print(f"📧 Sending 'overdue' email to: {book['email']}")
+            try:
+                send_mail(
+                    target=book['email'],
+                    subject="⚠️ Book Overdue - Action Required",
+                    body=f"""Hi {book['fullname']},
+
+Your borrowed book is now overdue.
+
+Book Details:
+- Title: {book['bookname']}
+- Author: {book['bookauthor']}
+- Due Date: {book['return_date']} (OVERDUE)
+
+Please return the book as soon as possible.
+
+Thank you,
+Batangas State University Mabini Campus Library
+""",
+                )
+                print(f"✅ Email sent successfully to {book['email']}")
+            except Exception as e:
+                print(f"❌ Failed to send email to {book['email']}: {e}")
+
+        print("=" * 60)
+        print(f"✅ Notification Check Complete:")
+        print(f"   - Sent {len(books_due_tomorrow)} 'due tomorrow' reminders")
+        print(f"   - Sent {len(overdue_books)} overdue notices")
+        print("=" * 60)
+
+    except pymysql.MySQLError as e:
+        print(f"❌ MySQL error in notification check: {e}")
+    except Exception as e:
+        print(f"❌ Error in notification check: {e}")
+        import traceback
+
+        traceback.print_exc()
+    finally:
+        if cursor:
+            cursor.close()
+        if db:
+            db.close()
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins="*",  # change to specific origins later
@@ -21,6 +183,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+scheduler.start()
+
+
+def shutdown_scheduler():
+    scheduler.shutdown()
 
 
 @app.post("/attendance")
@@ -35,6 +202,7 @@ async def post_attendance(data: Attendance):
         payload = jwt.decode(data.token, options={"verify_signature": False})
         srcode = payload.get("srcode")
         fullname = payload.get("fullname", "")
+        email = f"{srcode}@g.batstate-u.edu.ph"
         type_ = payload.get("type", "student")
 
         if not srcode:
@@ -57,8 +225,8 @@ async def post_attendance(data: Attendance):
         # if th student doesn't exist, create a new one
         if not student and type_.lower() == "student":
             cursor.execute(
-                "INSERT INTO student (srcode, fullname, type, attendance_count) VALUES (%s, %s, %s, %s)",
-                (srcode, fullname, type_, 0),
+                "INSERT INTO student (srcode, fullname,email,  type, attendance_count) VALUES (%s, %s, %s, %s, %s)",
+                (srcode, fullname, email, type_, 0),
             )
 
         cursor.execute(
@@ -124,6 +292,7 @@ async def post_borrow(data: BorrowBookPayload):
         fullname = payload.get("fullname", "")
         type_ = payload.get("type", "student")
         srcode = payload.get("srcode")
+        email = f"{srcode}@g.batstate-u.edu.ph"
 
         if not fullname or not type_ or not srcode:
             raise HTTPException(
@@ -142,8 +311,8 @@ async def post_borrow(data: BorrowBookPayload):
         # if the student doesn't exist, create a new one
         if not student:
             cursor.execute(
-                "INSERT INTO student (srcode, fullname, type, attendance_count, book_count) VALUES (%s, %s, %s, %s,%s)",
-                (srcode, fullname, type_, 0, 0),
+                "INSERT INTO student (srcode, fullname,email,  type, attendance_count, book_count) VALUES (%s, %s, %s, %s,%s, %s)",
+                (srcode, fullname, email, type_, 0, 0),
             )
 
         # check if book exists
@@ -179,11 +348,24 @@ async def post_borrow(data: BorrowBookPayload):
 
         # insert the borrowed book into the database
         cursor.execute(
-            "INSERT INTO borrow (srcode, isbn, bookname,bookauthor,   borrow_date, return_date) VALUES (%s, %s, %s, %s, %s, %s)",
-            (srcode, isbn, data.bookname, data.bookauthor, borrow_date, return_date),
+            "INSERT INTO borrow (srcode,email,isbn,bookname,bookauthor,borrow_date, return_date) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            (
+                srcode,
+                email,
+                isbn,
+                data.bookname,
+                data.bookauthor,
+                borrow_date,
+                return_date,
+            ),
         )
-
         db.commit()  # commit transaction
+        # after conmmiting the transaction, send an email notification
+        send_mail(
+            email,
+            subject="Borrowed Book Notification",
+            body="",
+        )
         return {"message": f"{fullname} borrowed '{data.bookname}' successfully."}
 
     except pymysql.MySQLError as e:
@@ -323,26 +505,28 @@ async def admin_login(data: AdminLoginPayload):
         cursor = db.cursor(pymysql.cursors.DictCursor)
 
         # Check if admin table exists, if not create it with default admin
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS admin (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 username VARCHAR(255) UNIQUE NOT NULL,
                 password_hash VARCHAR(255) NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        """)
+        """
+        )
         db.commit()
 
         # Check if any admin exists
         cursor.execute("SELECT COUNT(*) as count FROM admin")
         admin_count = cursor.fetchone()["count"]
-        
+
         # If no admin exists at all, create default admin (username: admin, password: admin123)
         if admin_count == 0:
             default_password_hash = hashlib.sha256("admin123".encode()).hexdigest()
             cursor.execute(
                 "INSERT INTO admin (username, password_hash) VALUES (%s, %s)",
-                ("admin", default_password_hash)
+                ("admin", default_password_hash),
             )
             db.commit()
 
@@ -360,11 +544,11 @@ async def admin_login(data: AdminLoginPayload):
 
         # Generate a simple admin token (in production, use proper JWT)
         admin_token = secrets.token_urlsafe(32)
-        
+
         return {
             "message": "Login successful",
             "token": admin_token,
-            "username": admin["username"]
+            "username": admin["username"],
         }
 
     except pymysql.MySQLError as e:
@@ -390,7 +574,8 @@ async def get_top_attendance():
 
         # Calculate total hours for each student
         # Total hours = SUM of TIMESTAMPDIFF(HOUR, time_in, time_out) from attendance table
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT 
                 s.srcode,
                 s.fullname as name,
@@ -401,17 +586,22 @@ async def get_top_attendance():
             GROUP BY s.srcode, s.fullname
             ORDER BY total_hours DESC
             LIMIT 100
-        """)
-        
+        """
+        )
+
         students = cursor.fetchall()
-        
+
         # Format the response
         result = []
         for student in students:
-            result.append({
-                "name": student["name"] or "Unknown",
-                "total_hours": int(student["total_hours"]) if student["total_hours"] else 0
-            })
+            result.append(
+                {
+                    "name": student["name"] or "Unknown",
+                    "total_hours": (
+                        int(student["total_hours"]) if student["total_hours"] else 0
+                    ),
+                }
+            )
 
         return {"students": result}
 
@@ -435,7 +625,8 @@ async def get_most_borrowed_books():
         cursor = db.cursor(pymysql.cursors.DictCursor)
 
         # Get students ranked by book_count
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT 
                 srcode,
                 fullname as name,
@@ -444,17 +635,24 @@ async def get_most_borrowed_books():
             WHERE type = 'student'
             ORDER BY books_borrowed DESC
             LIMIT 100
-        """)
-        
+        """
+        )
+
         students = cursor.fetchall()
-        
+
         # Format the response
         result = []
         for student in students:
-            result.append({
-                "name": student["name"] or "Unknown",
-                "books_borrowed": int(student["books_borrowed"]) if student["books_borrowed"] else 0
-            })
+            result.append(
+                {
+                    "name": student["name"] or "Unknown",
+                    "books_borrowed": (
+                        int(student["books_borrowed"])
+                        if student["books_borrowed"]
+                        else 0
+                    ),
+                }
+            )
 
         return {"students": result}
 
@@ -481,7 +679,8 @@ async def get_today_attendance():
         cursor = db.cursor(pymysql.cursors.DictCursor)
 
         # Get today's attendance records
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT 
                 s.fullname as name,
                 TIMESTAMPDIFF(HOUR, a.time_in, a.time_out) as hours,
@@ -490,18 +689,22 @@ async def get_today_attendance():
             JOIN student s ON a.srcode = s.srcode
             WHERE DATE(a.time_in) = %s
             ORDER BY a.time_in DESC
-        """, (today,))
-        
+        """,
+            (today,),
+        )
+
         records = cursor.fetchall()
-        
+
         # Format the response
         result = []
         for record in records:
-            result.append({
-                "name": record["name"] or "Unknown",
-                "hours": int(record["hours"]) if record["hours"] else 0,
-                "time": record["time"] or "N/A"
-            })
+            result.append(
+                {
+                    "name": record["name"] or "Unknown",
+                    "hours": int(record["hours"]) if record["hours"] else 0,
+                    "time": record["time"] or "N/A",
+                }
+            )
 
         return {"attendance": result}
 

@@ -8,20 +8,21 @@ def clean_isbn(isbn: str) -> str:
 
 
 def calculate_return_date(start_date: date, return_days: int) -> date:
-    # validate day if the day < 0
+    # Validate input
     if return_days < 0:
         raise ValueError("Days must be greater than 0")
 
-    # set non working days so 5 and 6
+    # Weekend days: 5 = Saturday, 6 = Sunday
     non_working_days = [5, 6]
 
-    # set the needed data to get the correct return date
-    days_left = return_days
+    days_added = 0
     return_date = start_date
-    while days_left > 0:
+
+    while days_added < return_days:
         return_date += timedelta(days=1)
-        # check if the day is a non working day
-        if return_date.weekday() in non_working_days:
-            # if it is a non working day, subtract 1 day
-            days_left -= 1
+
+        # Only count this day if it's NOT a weekend
+        if return_date.weekday() not in non_working_days:
+            days_added += 1
+
     return return_date
