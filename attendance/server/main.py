@@ -1,6 +1,9 @@
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, date
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import (
+    FastAPI,
+    HTTPException,
+)
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi.middleware.cors import CORSMiddleware
 from models import (
@@ -28,8 +31,9 @@ async def lifespan(app: FastAPI):
     scheduler = BackgroundScheduler()
     scheduler.add_job(
         check_and_notify_overdue_books,
-        'interval',
-        minutes=1,  # For testing
+        'cron',
+        hour=8,
+        minute=0,  # For testing
         timezone='Asia/Manila',
     )
     scheduler.start()
@@ -331,17 +335,29 @@ async def post_borrow(data: BorrowBookPayload):
             (srcode,),
         )
 
-        # prevent duplicate borrow (student already borrowed this book and not yet returned)
         cursor.execute(
-            "SELECT * FROM borrow WHERE srcode = %s AND isbn = %s AND return_date >= CURDATE()",
-            (srcode, isbn),
+            """
+    SELECT 
+        b.srcode,
+        s.fullname,
+        b.email,
+        b.borrow_date,
+        b.return_date
+    FROM borrow b
+    JOIN student s ON s.srcode = b.srcode
+    WHERE b.isbn = %s
+    AND b.return_date >= CURDATE()
+    LIMIT 1
+    """,
+            (isbn,),
         )
-        existing_borrow = cursor.fetchone()
-        if existing_borrow:
-            raise HTTPException(
-                status_code=400, detail="Book already borrowed and not yet returned."
-            )
+        borrower = cursor.fetchone()
 
+        if borrower:
+            raise HTTPException(
+                status_code=400,
+                detail=(f"Book is currently borrowed by {borrower['fullname']} "),
+            )
         # calculate borrow and return dates
         borrow_date = date.today()
         return_date = calculate_return_date(borrow_date, data.returndays)
